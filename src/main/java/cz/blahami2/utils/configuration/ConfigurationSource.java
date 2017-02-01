@@ -45,6 +45,7 @@ public interface ConfigurationSource {
             put( Long.class, ( str ) -> Long.parseLong( str.toString() ) );
             put( Float.class, ( str ) -> Float.parseFloat( str.toString() ) );
             put( Double.class, ( str ) -> Double.parseDouble( str.toString() ) );
+            put( String.class, ( str ) -> str.toString() );
         }};
 
         public static <T> Optional<T> map( Class<T> clazz, Object value ) {
