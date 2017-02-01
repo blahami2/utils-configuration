@@ -1,6 +1,7 @@
 package cz.blahami2.utils.configuration;
 
 import cz.blahami2.utils.configuration.data.PropertiesReader;
+import cz.blahami2.utils.configuration.data.readers.PropertiesConfigurationReader;
 import cz.blahami2.utils.configuration.sources.MapConfigurationSource;
 import cz.blahami2.utils.configuration.sources.PropertiesConfigurationSource;
 import cz.blahami2.utils.configuration.utils.ArgumentParser;
@@ -45,7 +46,7 @@ public class ConfigurationBuilder {
         ConfigurationBuilderWithReader builder = newInstance()
                 .setArguments( args, argumentParser )
                 .setUseEnvironmentVariables( true )
-                .setConfigurationReader( propertiesReader );
+                .setPropertiesReader( propertiesReader );
         configArgNames.forEach( argName -> builder.addConfigPathArgumentName( argName ) );
         configPaths.forEach( path -> builder.addConfigurationPath( path ) );
         return builder;
@@ -59,6 +60,10 @@ public class ConfigurationBuilder {
         return this;
     }
 
+    public ConfigurationBuilder setArguments( String[] args ) {
+        return setArguments( args, createDefaultArgumentParser() );
+    }
+
     // set load environment
     public ConfigurationBuilder setUseEnvironmentVariables( boolean useEnvironmentVariables ) {
         this.useEnvironmentVariables = useEnvironmentVariables;
@@ -66,27 +71,39 @@ public class ConfigurationBuilder {
     }
 
 
-    public ConfigurationBuilderWithReader setConfigurationReader( PropertiesReader propertiesReader ) {
+    public ConfigurationBuilderWithReader setPropertiesReader( PropertiesReader propertiesReader ) {
         return new ConfigurationBuilderWithReader( this, propertiesReader );
     }
 
     // set default properties
     public ConfigurationBuilderWithReader setDefaultProperties( String propertiesPath, PropertiesReader propertiesReader ) {
-        return setConfigurationReader( propertiesReader ).addDefaultConfigurationPath( propertiesPath );
+        return setPropertiesReader( propertiesReader ).addDefaultConfigurationPath( propertiesPath );
+    }
+
+    public ConfigurationBuilderWithReader setDefaultProperties( String propertiesPath ) {
+        return setDefaultProperties( propertiesPath, createDefaultPropertiesReader() );
     }
 
     // set config arg name
     public ConfigurationBuilderWithReader setConfigPathArgumentName( String configPathArgumentName, PropertiesReader propertiesReader ) {
-        ConfigurationBuilderWithReader builder = setConfigurationReader( propertiesReader );
+        ConfigurationBuilderWithReader builder = setPropertiesReader( propertiesReader );
         builder.addConfigPathArgumentName( configPathArgumentName );
         return builder;
     }
 
+    public ConfigurationBuilderWithReader setConfigPathArgumentName( String configPathArgumentName ) {
+        return setConfigPathArgumentName( configPathArgumentName, createDefaultPropertiesReader() );
+    }
+
     // set config path
     public ConfigurationBuilderWithReader setConfigurationPath( String configurationPath, PropertiesReader propertiesReader ) {
-        ConfigurationBuilderWithReader builder = setConfigurationReader( propertiesReader );
+        ConfigurationBuilderWithReader builder = setPropertiesReader( propertiesReader );
         builder.addConfigurationPath( configurationPath );
         return builder;
+    }
+
+    public ConfigurationBuilderWithReader setConfigurationPath( String configurationPath ) {
+        return setConfigurationPath( configurationPath, createDefaultPropertiesReader() );
     }
 
     public Configuration build() throws IOException {
@@ -100,6 +117,7 @@ public class ConfigurationBuilder {
         // IV. default config - WITH READER ONLY
         return new Configuration( list );
     }
+
 
     protected LinkedList<ConfigurationSource> addArgs( LinkedList<ConfigurationSource> list ) {
         if ( args != null ) {
@@ -116,6 +134,14 @@ public class ConfigurationBuilder {
             list.add( new MapConfigurationSource( System.getenv() ) );
         }
         return list;
+    }
+
+    private PropertiesReader createDefaultPropertiesReader() {
+        return new PropertiesReader();
+    }
+
+    private ArgumentParser createDefaultArgumentParser() {
+        return new ArgumentParser();
     }
 
     public static class ConfigurationBuilderWithReader extends ConfigurationBuilder {
@@ -199,12 +225,11 @@ public class ConfigurationBuilder {
             return new Configuration( list );
         }
 
-        private LinkedList<ConfigurationSource> addListByPath( LinkedList<ConfigurationSource> sourceList, List<String> pathList ) throws IOException {
-            for ( String configPath : pathList ) {
-                Properties p = propertiesReader.read( configPath );
-                ConfigurationSource configurationSource = new PropertiesConfigurationSource( p );
-                sourceList.add( configurationSource );
-            }
+        private LinkedList<ConfigurationSource> addListByPath( LinkedList<ConfigurationSource> sourceList, List<String> pathList ) {
+            pathList.stream()
+                    .map( path -> propertiesReader.read( path ) )
+                    .map( properties -> new PropertiesConfigurationSource( properties ) )
+                    .forEach( source -> sourceList.add( source ) );
             return sourceList;
         }
     }
